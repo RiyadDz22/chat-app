@@ -1,4 +1,7 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+
+final _firebase = FirebaseAuth.instance;
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -8,7 +11,42 @@ class AuthScreen extends StatefulWidget {
 }
 
 class _AuthScreenState extends State<AuthScreen> {
-  var is_Login = true;
+  var _isLogin = true;
+  var _entredEmail = '';
+  var _entredPassword = '';
+  final _form = GlobalKey<FormState>();
+  void _submit() async {
+    final isValid = _form.currentState!.validate();
+    if (!isValid) {
+      return;
+    }
+
+    _form.currentState!.save();
+    try {
+      if (_isLogin) {
+        final loggedinUser = await _firebase.signInWithEmailAndPassword(
+            email: _entredEmail, password: _entredPassword);
+        print(loggedinUser.credential);
+      } else {
+        final user = await _firebase.createUserWithEmailAndPassword(
+          email: _entredEmail,
+          password: _entredPassword,
+        );
+        print(user.credential);
+      }
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'email-already-in-use') {}
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            e.message ?? 'Request failed',
+          ),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -30,6 +68,7 @@ class _AuthScreenState extends State<AuthScreen> {
                   child: Padding(
                     padding: const EdgeInsets.all(16),
                     child: Form(
+                      key: _form,
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -39,6 +78,9 @@ class _AuthScreenState extends State<AuthScreen> {
                             ),
                             keyboardType: TextInputType.emailAddress,
                             autocorrect: false,
+                            onSaved: (newValue) {
+                              _entredEmail = newValue!;
+                            },
                             textCapitalization: TextCapitalization.none,
                             validator: (value) {
                               if (value == null ||
@@ -60,24 +102,27 @@ class _AuthScreenState extends State<AuthScreen> {
                               }
                               return null;
                             },
+                            onSaved: (newValue) {
+                              _entredPassword = newValue!;
+                            },
                           ),
                           const SizedBox(height: 12),
                           ElevatedButton(
-                            onPressed: () {},
+                            onPressed: _submit,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Theme.of(context)
                                   .colorScheme
                                   .primaryContainer,
                             ),
-                            child: Text(is_Login ? 'Login' : 'Signup'),
+                            child: Text(_isLogin ? 'Login' : 'Signup'),
                           ),
                           TextButton(
                             onPressed: () {
                               setState(() {
-                                is_Login = !is_Login;
+                                _isLogin = !_isLogin;
                               });
                             },
-                            child: Text(is_Login
+                            child: Text(_isLogin
                                 ? 'Create an account'
                                 : 'I Already have an account'),
                           ),
